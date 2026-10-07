@@ -1,0 +1,3 @@
+usage:
+  /usr/local/bin/openbts-gsup-auth IMSI
+  /usr/local/bin/openbts-gsup-auth IMSI RAND AUTS

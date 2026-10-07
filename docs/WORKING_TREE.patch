@@ -1,0 +1,807 @@
+diff --git a/SGSNGGSN/GPRSL3Messages.cpp b/SGSNGGSN/GPRSL3Messages.cpp
+index 79a5256..2b35b86 100644
+--- a/SGSNGGSN/GPRSL3Messages.cpp
++++ b/SGSNGGSN/GPRSL3Messages.cpp
+@@ -1182,36 +1182,59 @@ void L3GmmMsgAuthentication::gmmWriteBody(ByteVector &msg)
+ 	msg.append(mRand);
+ 	// CKSN must be included
+ 	msg.appendByte(0x80 | 0x00); //IE;
++
++	// Authentication parameter AUTN.
++	if (mAutn.size() == 16) {
++		msg.appendByte(0x28);
++		msg.appendByte(16);
++		msg.append(mAutn);
++	}
+ }
+ 
+ void L3GmmMsgAuthenticationResponse::gmmParseBody(L3GmmFrame &src, size_t &rp)
+ {
+-	// 9.4.10 of 24.008
+-        unsigned char ACrefnum = src.readByte(rp); // ignore for now
+-        ByteVector SRES(4);
++	// 24.008 9.4.10
++	unsigned char ACrefnum = src.readByte(rp);
++	(void)ACrefnum;
+ 
+-        // optional ieis:
+-        while (rp < src.size()) {
+-                unsigned iei = src.readIEI(rp);
+-                switch (iei) {
+-                case 0x22: // SRES/RES 4 bytes
+-			for (int i = 0; i < 4; i++) 
+-				SRES.setByte(i,src.readByte(rp));
+-			mSRES = SRES;	
+-                        break;
+-                case 0x23: // IMEISV  TLV of 11 bytes
+-			// ignore for now;
+-		case 0x29: // Authentication Response parameter extension (AUTN) TLV 3-14
+-			// ignore for now;
++	ByteVector SRES(4);
++	ByteVector RES;
++
++	while (rp < src.size()) {
++		unsigned iei = src.readIEI(rp);
++
++		switch (iei) {
++		case 0x22: // first 4 bytes of SRES / UMTS RES
++			for (int i = 0; i < 4; i++) {
++				unsigned char b = src.readByte(rp);
++				SRES.setByte(i, b);
++				RES.appendByte(b);
++			}
++			mSRES = SRES;
++			break;
++
++		case 0x23: // IMEISV TLV
+ 			{
+ 				unsigned int len = src.readByte(rp);
+-				for (unsigned int i = 0; i < len; i++) src.readByte(rp);
++				for (unsigned int i = 0; i < len; i++)
++					src.readByte(rp);
+ 			}
+ 			break;
+-                default:
+-                        break;
+-                }
+-        }
++
++		case 0x29: // Authentication Response parameter extension
++			{
++				unsigned int len = src.readByte(rp);
++				for (unsigned int i = 0; i < len; i++)
++					RES.appendByte(src.readByte(rp));
++			}
++			break;
++
++		default:
++			break;
++		}
++	}
++
++	mRES = RES;
+ }
+ 
+ // 24.008 9.5.1
+@@ -1429,25 +1452,34 @@ void GMMRoutingAreaIdIE::text(std::ostream&os) const
+ 
+ void GMMRoutingAreaIdIE::raLoad()
+ {
+-	const char* wMCC, *wMNC;
++	std::string wMCC;
++	std::string wMNC;
++
+ 	if (Sgsn::isUmts()) {
+-		wMCC = gConfig.getStr("UMTS.Identity.MCC").c_str();
+-		wMNC = gConfig.getStr("UMTS.Identity.MNC").c_str();
++		wMCC = gConfig.getStr("UMTS.Identity.MCC");
++		wMNC = gConfig.getStr("UMTS.Identity.MNC");
+ 		mLAC = gConfig.getNum("UMTS.Identity.LAC");
+ 	} else {
+-		wMCC = gConfig.getStr("GSM.Identity.MCC").c_str();
+-		wMNC = gConfig.getStr("GSM.Identity.MNC").c_str();
++		wMCC = gConfig.getStr("GSM.Identity.MCC");
++		wMNC = gConfig.getStr("GSM.Identity.MNC");
+ 		mLAC = gConfig.getNum("GSM.Identity.LAC");
+ 	}
++
+ 	mRAC = gConfig.getNum("GPRS.RAC");
+ 
+-	mMCC[0] = wMCC[0]-'0';
+-	mMCC[1] = wMCC[1]-'0';
+-	mMCC[2] = wMCC[2]-'0';
+-	mMNC[0] = wMNC[0]-'0'; 
+-	mMNC[1] = wMNC[1]-'0';
+-	// 24.008 10.5.5.15 says if only two digits, MNC[2] is 0xf.
+-	mMNC[2] = wMNC[2] ? (wMNC[2]-'0') : 0xf;
++	if (wMCC.size() != 3 || (wMNC.size() != 2 && wMNC.size() != 3)) {
++		SGSNERROR("Invalid MCC/MNC for Routing Area: MCC="
++		          << wMCC << " MNC=" << wMNC);
++		return;
++	}
++
++	mMCC[0] = wMCC[0] - '0';
++	mMCC[1] = wMCC[1] - '0';
++	mMCC[2] = wMCC[2] - '0';
++
++	mMNC[0] = wMNC[0] - '0';
++	mMNC[1] = wMNC[1] - '0';
++	mMNC[2] = (wMNC.size() == 3) ? (wMNC[2] - '0') : 0xf;
+ }
+ 
+ };	// namespace
+diff --git a/SGSNGGSN/GPRSL3Messages.h b/SGSNGGSN/GPRSL3Messages.h
+index 41d1f81..efc7d88 100644
+--- a/SGSNGGSN/GPRSL3Messages.h
++++ b/SGSNGGSN/GPRSL3Messages.h
+@@ -912,6 +912,7 @@ struct L3GmmMsgAuthentication : L3GmmDlMsg
+ 	// Force to standyby - nope
+ 	// A&C reference number - just used to match up Authentication Response to this message.
+ 	ByteVector mRand; // 128 bit random number.
++	ByteVector mAutn; // 128 bit UMTS AKA AUTN.
+ 	// GPRS ciphering key sequence - nope
+ 	// AUTN - if specified, it is a UMTS type challenge. nope.
+ 	void gmmWriteBody(ByteVector &msg);
+@@ -919,6 +920,12 @@ struct L3GmmMsgAuthentication : L3GmmDlMsg
+ 	{
+ 		assert(rand.size() == 16);
+ 	}
++	L3GmmMsgAuthentication(ByteVector &rand, ByteVector &autn) :
++		L3GmmDlMsg(senseCmd), mRand(rand), mAutn(autn)
++	{
++		assert(rand.size() == 16);
++		assert(autn.size() == 16);
++	}
+ 	void textBody(std::ostream &os) const {
+ 		os <<LOGVAR(mRand);
+ 	}
+@@ -928,7 +935,8 @@ struct L3GmmMsgAuthentication : L3GmmDlMsg
+ struct L3GmmMsgAuthenticationResponse : L3GmmUlMsg
+ {
+         int MTI() const {return AuthenticationAndCipheringResp;}
+-        ByteVector mSRES; // 32 bit authentication result.
++        ByteVector mSRES; // first 32 bits of authentication result.
++        ByteVector mRES;  // complete UMTS AKA RES.
+         void gmmParseBody(L3GmmFrame &src, size_t &rp);
+         void textBody(std::ostream &os) const {
+                 os <<LOGVAR(mSRES);
+diff --git a/SGSNGGSN/Sgsn.cpp b/SGSNGGSN/Sgsn.cpp
+index fe8b9dd..62fc778 100644
+--- a/SGSNGGSN/Sgsn.cpp
++++ b/SGSNGGSN/Sgsn.cpp
+@@ -39,6 +39,157 @@ static SgsnInfoList_t sSgsnInfoList;
+ typedef std::list<GmmInfo*> GmmInfoList_t;
+ static GmmInfoList_t sGmmInfoList;
+ static Mutex sSgsnListMutex;	// One lock sufficient for all lists maintained by SGSN.
++
++/*
++ * Experimental UMTS AKA bridge.
++ *
++ * Fetches one Milenage vector from OsmoHLR through
++ * /usr/local/bin/openbts-gsup-auth.
++ */
++static bool akaIsHex(const string &v)
++{
++	if (v.empty() || (v.size() & 1))
++		return false;
++
++	for (size_t i = 0; i < v.size(); ++i) {
++		char c = v[i];
++		if (!((c >= '0' && c <= '9') ||
++		      (c >= 'a' && c <= 'f') ||
++		      (c >= 'A' && c <= 'F')))
++			return false;
++	}
++
++	return true;
++}
++
++static bool akaExtract(const string &line, const char *name, string &value)
++{
++	string needle = string(name) + "=";
++	size_t p = line.find(needle);
++
++	if (p == string::npos)
++		return false;
++
++	p += needle.size();
++
++	size_t e = line.find_first_of(" \r\n\t", p);
++
++	if (e == string::npos)
++		e = line.size();
++
++	value = line.substr(p, e - p);
++	return !value.empty();
++}
++
++static bool akaHexEqual(const string &a, const string &b)
++{
++	if (a.size() != b.size())
++		return false;
++
++	for (size_t i = 0; i < a.size(); ++i) {
++		char ca = a[i];
++		char cb = b[i];
++
++		if (ca >= 'A' && ca <= 'F')
++			ca = ca - 'A' + 'a';
++
++		if (cb >= 'A' && cb <= 'F')
++			cb = cb - 'A' + 'a';
++
++		if (ca != cb)
++			return false;
++	}
++
++	return true;
++}
++
++static ByteVector akaHexToByteVector(const string &hex)
++{
++	ByteVector result(hex.size() / 2);
++
++	for (size_t i = 0; i < result.size(); ++i) {
++		unsigned value = 0;
++
++		for (unsigned n = 0; n < 2; ++n) {
++			char c = hex[i * 2 + n];
++			unsigned v;
++
++			if (c >= '0' && c <= '9')
++				v = c - '0';
++			else if (c >= 'a' && c <= 'f')
++				v = c - 'a' + 10;
++			else
++				v = c - 'A' + 10;
++
++			value = (value << 4) | v;
++		}
++
++		result.setByte(i, value);
++	}
++
++	return result;
++}
++
++static bool akaGetVector(
++	const string &imsi,
++	string &rand,
++	string &autn,
++	string &xres,
++	string &ck,
++	string &ik)
++{
++	/* IMSI comes from the UE, so do not put arbitrary text into a shell. */
++	if (imsi.empty() || imsi.size() > 15)
++		return false;
++
++	for (size_t i = 0; i < imsi.size(); ++i) {
++		if (imsi[i] < '0' || imsi[i] > '9')
++			return false;
++	}
++
++	string command =
++		"/usr/local/bin/openbts-gsup-auth " + imsi + " 2>/dev/null";
++
++	FILE *fp = popen(command.c_str(), "r");
++
++	if (!fp) {
++		LOG(ERR) << "Unable to start openbts-gsup-auth";
++		return false;
++	}
++
++	char buffer[1024];
++	string output;
++
++	while (fgets(buffer, sizeof(buffer), fp))
++		output += buffer;
++
++	int rc = pclose(fp);
++
++	if (rc != 0) {
++		LOG(ERR) << "openbts-gsup-auth failed for IMSI " << imsi;
++		return false;
++	}
++
++	if (!akaExtract(output, "RAND", rand) ||
++	    !akaExtract(output, "AUTN", autn) ||
++	    !akaExtract(output, "XRES", xres) ||
++	    !akaExtract(output, "CK", ck) ||
++	    !akaExtract(output, "IK", ik)) {
++		LOG(ERR) << "Malformed AKA helper output";
++		return false;
++	}
++
++	if (!akaIsHex(rand) || rand.size() != 32 ||
++	    !akaIsHex(autn) || autn.size() != 32 ||
++	    !akaIsHex(xres) || xres.size() < 8 || xres.size() > 32 ||
++	    !akaIsHex(ck)   || ck.size() != 32 ||
++	    !akaIsHex(ik)   || ik.size() != 32) {
++		LOG(ERR) << "Invalid UMTS AKA vector returned by helper";
++		return false;
++	}
++
++	return true;
++}
+ static void dumpGmmInfo();
+ #if RN_UMTS
+ static void sendAuthenticationRequest(SgsnInfo *si, GmmInfo::SecurityState secState);
+@@ -187,7 +338,12 @@ static uint32_t allocatePTmsi()
+ 		gPTmsiNext = ((now&0xff)<<12) + 1;
+ 	}
+ 	if (gPTmsiNext == 0 || gPTmsiNext >= (1<<30)) { gPTmsiNext = 1; }
+-	return gPTmsiNext++;
++
++	/*
++	 * 3GPP P-TMSI for SGSN use: top two bits shall be 11.
++	 * Keep the allocator in the lower 30 bits.
++	 */
++	return (gPTmsiNext++ & 0x3fffffff) | 0xc0000000;
+ 	//return Tlli::makeLocalTlli(gPTmsiNext++);
+ }
+ 
+@@ -342,6 +498,9 @@ unsigned GmmInfo::freePdpAll(bool freeRabsToo)
+ void SgsnInfo::sgsnSend2PdpLowSide(int nsapi, ByteVector &packet)
+ {
+ 	PdpContext *pdp = getPdp(nsapi);
++	printf("### PDP LOOKUP: si=%p nsapi=%d bytes=%u pdp=%p ###\n",
++	       (void*)this, nsapi, (unsigned)packet.size(), (void*)pdp);
++	fflush(stdout);
+ 	// Don't assert if pdp is null, just return.
+         // Sometimes we get a SignallingConnectionReleaseIndication and free the pdp, but still get data from the UE after that
+         //  before the Radio Beareor or RRC connection is released.
+@@ -351,6 +510,7 @@ void SgsnInfo::sgsnSend2PdpLowSide(int nsapi, ByteVector &packet)
+ 		LOG(ERR) << "Received packet after pdp was killed: " << packet;
+ 		return;
+ 	}
++	std::cout << "### PDP PACKET HEX: " << packet << " ###" << std::endl;
+ 	pdp->pdpWriteLowSide(packet);
+ }
+ 
+@@ -402,6 +562,13 @@ void SgsnInfo::sgsnWriteHighSideMsg(L3GprsDlMsg &msg)
+ 		ByteVector bv(1000);
+ 		bv.setAppendP(0,0);
+ 		msg.gWrite(bv);
++
++		if (msg.MTI() == L3GmmMsg::AttachAccept) {
++			printf("ATTACH_ACCEPT_RAW=%s\n",
++			       bv.hexstr().c_str());
++			fflush(stdout);
++		}
++
+ 		SGSNLOG("Sending "<<msg.str() <<this);
+ 		sgsnSend2MsHighSide(bv,msg.mtname(),SRB3);
+ #else
+@@ -459,6 +626,11 @@ void sendAttachAccept(SgsnInfo *si)
+ 	assert(gmm);
+ 	//L3GmmMsgAttachAccept aa(si->attachResult(),gmm->getPTmsi(),si->mAttachMobileId);
+ 	uint32_t ptmsi = gmm->getPTmsi();
++
++	printf("ATTACH_ACCEPT PTMSI=%08X result=%u\n",
++	       ptmsi, (unsigned)si->attachResult());
++	fflush(stdout);
++
+ 	L3GmmMsgAttachAccept aa(si->attachResult(),ptmsi);
+ 	// We are finished with the attach procedure now.
+ 	// Note that we are using the si (and TLLI) that the message was sent on.
+@@ -528,6 +700,12 @@ void MSUEAdapter::sgsnHandleSecurityModeComplete(bool success)
+ 		}
+ 		switch (gmm->mSecState) {
+ 		case GmmInfo::SecurityStateAttach:
++			/*
++			 * Security procedure succeeded.  Mark it started BEFORE
++			 * returning, otherwise a repeated AttachRequest starts
++			 * AKA + Security Mode all over again.
++			 */
++			gmm->mSecState = GmmInfo::SecurityStateStarted;
+ 			sendAttachAccept(si);	// happiness
+ 			return;
+ 		case GmmInfo::SecurityStateServiceRequest: {
+@@ -565,7 +743,6 @@ void MSUEAdapter::sgsnHandleSecurityModeComplete(bool success)
+ 			SGSNERROR("Received spurious Security Mode Complete message");
+ 			return;
+ 		}
+-		gmm->mSecState = GmmInfo::SecurityStateStarted;
+ 	} else {
+ 		SGSNERROR("Integrity Protection failed for UE:"<<si);
+ 		// Oops!  We could send an attach reject, but why bother?
+@@ -597,43 +774,39 @@ static void sendAuthenticationRequest(SgsnInfo *si, GmmInfo::SecurityState secSt
+ 	//char imsi[len+2];
+ 	//memcpy(imsi,gmm->mImsi.hexstr().c_str(),len);
+ 	//imsi[len] = 0;
+-	LOG(INFO) << "Looking up Kc for imsi " << IMSI;
+-	string Kcs = gTMSITable.getKc(IMSI.c_str());
+-	if (Kcs.length() <= 1) {
+-		SGSNERROR("No Kc found for MS in TMSI table during Attach procedure"<<si);
+-		// need to do authentication, send authentication request
+-					//sendAuthenticationRequest(si);
+-	}
++	string RAND, AUTN, XRES, CK, IK;
+ 
+-        SIPEngine engine(gConfig.getStr("SIP.Proxy.Registration").c_str(),IMSI.c_str());
+-	string RAND;
+-        //bool success =
+-	try {
+-		engine.Register(SIPEngine::SIPRegister, &RAND);
+-	} catch(SIPTimeout) {
+-		LOG(ALERT) << "SIP registration timed out.  Is sipauthserve running?";
+-		return;	// Thats the end of that.
+-	}
+-	gmm->mSecState = secState;
+-	// Stick new UE into TMSI table if its not already there
+-	if (!gTMSITable.TMSI(IMSI.c_str())) gTMSITable.assign(IMSI.c_str());
+-	if (RAND.size() < 2) {
+-		// This happens if the IMSI does not exist in the registration database.
+-		LOG(NOTICE) << "No registration found for IMSI "<<IMSI;
+-		// TODO: And what should we do?  By just returning the UE just keeps trying and trying;
+-		// we should send something to shut it up.
++	LOG(INFO) << "Requesting UMTS AKA vector from OsmoHLR for IMSI "
++	          << IMSI;
++
++	if (!akaGetVector(IMSI, RAND, AUTN, XRES, CK, IK)) {
++		SGSNERROR("Unable to obtain UMTS AKA vector for IMSI "
++		          << IMSI << si);
+ 		return;
+ 	}
+ 
+-        ByteVector rand(RAND.size()/2);    // Leave it random.
+-	for (unsigned i = 0; i < RAND.size(); i++) {
+-		char ch = (RAND.c_str())[i];
+-		ch = (ch > '9') ? ((ch & 0x0f) + 9) : (ch & 0x0f);
+-		rand.setField(i*4,ch,4);
+-	}
++	gmm->mSecState = secState;
++
++	/* Keep the existing TMSI bookkeeping. */
++	if (!gTMSITable.TMSI(IMSI.c_str()))
++		gTMSITable.assign(IMSI.c_str());
++
++	ByteVector rand = akaHexToByteVector(RAND);
++	ByteVector autn = akaHexToByteVector(AUTN);
++
+ 	si->mRAND = rand;
+-        L3GmmMsgAuthentication amsg(rand);
+-        si->sgsnWriteHighSideMsg(amsg);
++	si->mXRES = XRES;
++	si->mCK = CK;
++	si->mIK = IK;
++
++	LOG(INFO) << "Sending UMTS AKA RAND+AUTN to IMSI " << IMSI;
++
++	printf("AKA_CHALLENGE RAND=%s AUTN=%s\n",
++       rand.hexstr().c_str(),
++       autn.hexstr().c_str());
++
++	L3GmmMsgAuthentication amsg(rand, autn);
++	si->sgsnWriteHighSideMsg(amsg);
+                   status = gmm->getPdpContextStatus();
+                   nsapiMask = status.mStatus[1] << 8 | status.mStatus[0];
+                   if (nsapiMask > 0) nsapiMask = (int) floor(log2(nsapiMask));
+@@ -679,23 +852,36 @@ static void handleAuthenticationResponse(SgsnInfo *si, L3GmmMsgAuthenticationRes
+ 		}
+ 
+ 		string IMSI = gmm->mImsi.hexstr();
+-		string RAND = si->mRAND.hexstr();
+-		// verify SRES 
+-		bool success = false;
+-		try {
+-			SIPEngine engine(gConfig.getStr("SIP.Proxy.Registration").c_str(),IMSI.c_str());
+-			SGSNLOG("waiting for registration on IMSI: " << IMSI);
+-			string SRESstr = armsg.mSRES.hexstr();
+-			success = engine.Register(SIPEngine::SIPRegister, &RAND, IMSI.c_str(), SRESstr.c_str());
+-		}
+-		catch(SIPTimeout) {
+-			SGSNLOG("SIP authentication timed out.  Is the proxy running at " << gConfig.getStr("SIP.Proxy.Registration"));
+-			// TODO: Reject 
++
++		string mobileRES;
++
++		if (armsg.mRES.size())
++			mobileRES = armsg.mRES.hexstr();
++		else
++			mobileRES = armsg.mSRES.hexstr();
++
++		printf("AKA_RES IMSI=%s parsed=%s expected=%s sres=%s fullres=%s\n",
++		       IMSI.c_str(),
++		       mobileRES.c_str(),
++		       si->mXRES.c_str(),
++		       armsg.mSRES.hexstr().c_str(),
++		       armsg.mRES.hexstr().c_str());
++
++		bool success = akaHexEqual(mobileRES, si->mXRES);
++
++		if (!success) {
++			SGSNERROR("UMTS AKA failed for IMSI " << IMSI
++			          << ": RES=" << mobileRES
++			          << " expected=" << si->mXRES);
+ 			return;
+ 		}
+ 
++		SGSNLOG("UMTS AKA successful for IMSI " << IMSI);
+ #if RN_UMTS
+-		if (success) { sgsnStartIntegrityProtection(si); }
++		if (success) {
++			SgsnAdapter::startIntegrityProtectionWithIK(
++				si->mMsHandle, si->mIK);
++		}
+ #else
+ 		// TODO: What?
+ #endif
+@@ -1250,12 +1436,85 @@ static void handleL3GmmMsg(SgsnInfo *si,ByteVector &frame1)
+ 		break;
+ 	}
+ 	case L3GmmMsg::AuthenticationAndCipheringResp: {
++		printf("AKA_RESP_RAW=%s\n", frame.hexstr().c_str());
++		fflush(stdout);
++
++		/*
++		 * Expected UMTS format:
++		 *
++		 *  08 13 RR 22 aa bb cc dd 29 LL xx...
++		 *
++		 * RR        = A&C reference
++		 * 0x22      = first four RES bytes
++		 * 0x29      = RES extension
++		 */
++		if (frame.size() < 8) {
++			SGSNERROR("AKA response too short: " << frame.hexstr());
++			break;
++		}
++
++		if (frame.getByte(3) != 0x22) {
++			SGSNERROR("AKA response missing 0x22 IE: "
++			          << frame.hexstr());
++			break;
++		}
++
++		unsigned extlen = 0;
++
++		if (frame.size() > 8) {
++			if (frame.size() < 10 ||
++			    frame.getByte(8) != 0x29) {
++				SGSNERROR("AKA response has unexpected extension layout: "
++				          << frame.hexstr());
++				break;
++			}
++
++			extlen = frame.getByte(9);
++
++			if (10 + extlen > frame.size()) {
++				SGSNERROR("AKA RES extension truncated: "
++				          << frame.hexstr());
++				break;
++			}
++		}
++
++		unsigned reslen = 4 + extlen;
++
++		if (reslen > 16) {
++			SGSNERROR("AKA RES too long: " << reslen);
++			break;
++		}
++
+ 		L3GmmMsgAuthenticationResponse armsg;
+-		armsg.gmmParse(frame);
+-		SGSNLOG("Received AuthenticationAndCipheringResp message "<<si);
+-		handleAuthenticationResponse(si,armsg);
++
++		ByteVector sres(4);
++		ByteVector res(reslen);
++
++		for (unsigned i = 0; i < 4; ++i) {
++			unsigned b = frame.getByte(4 + i);
++			sres.setByte(i, b);
++			res.setByte(i, b);
++		}
++
++		for (unsigned i = 0; i < extlen; ++i)
++			res.setByte(4 + i, frame.getByte(10 + i));
++
++		armsg.mSRES = sres;
++		armsg.mRES = res;
++
++		printf("AKA_RESP_PARSE_OK sres=%s res=%s\n",
++		       armsg.mSRES.hexstr().c_str(),
++		       armsg.mRES.hexstr().c_str());
++		fflush(stdout);
++
++		handleAuthenticationResponse(si, armsg);
+ 		break;
+ 	}
++	case L3GmmMsg::AuthenticationAndCipheringFailure: {
++		printf("AKA_FAILURE_RAW=%s\n", frame.hexstr().c_str());
++		break;
++	}
++
+ 	case L3GmmMsg::ServiceRequest: {
+ 		L3GmmMsgServiceRequest srmsg;
+ 		srmsg.gmmParse(frame);
+@@ -1299,6 +1558,10 @@ static void handleL3GmmMsg(SgsnInfo *si,ByteVector &frame1)
+ void MSUEAdapter::sgsnWriteLowSide(ByteVector &payload, uint32_t handle, unsigned rbid)
+ {
+ 	SgsnInfo *si = sgsnGetSgsnInfoByHandle(handle,true);	// Create if necessary.
++	printf("### SGSN LOWSIDE: handle=%08x RB=%u bytes=%u si=%p ###\n",
++	       (unsigned)handle, (unsigned)rbid,
++	       (unsigned)payload.size(), (void*)si);
++	fflush(stdout);
+ #if RN_UMTS
+ 	// No Pdcp, so just send it off.
+ 	si->sgsnSend2PdpLowSide(rbid, payload);
+diff --git a/SGSNGGSN/Sgsn.h b/SGSNGGSN/Sgsn.h
+index 0d802e4..c6d4719 100644
+--- a/SGSNGGSN/Sgsn.h
++++ b/SGSNGGSN/Sgsn.h
+@@ -281,6 +281,9 @@ class SgsnInfo
+ 	//uint32_t getPTmsi() { return mMsHandle; }	// NOT RIGHT!
+ 
+ 	ByteVector mRAND;
++	std::string mXRES;
++	std::string mCK;
++	std::string mIK;
+ 	// The information in the L3 AttachRequest is rightly part of the GmmInfo context,
+ 	// but when we receive the message, that does not exist yet, so we save the
+ 	// AttachRequest info in the SgsnInfo here.
+diff --git a/SGSNGGSN/SgsnExport.h b/SGSNGGSN/SgsnExport.h
+index 86a4fcd..afefa9c 100644
+--- a/SGSNGGSN/SgsnExport.h
++++ b/SGSNGGSN/SgsnExport.h
+@@ -172,6 +172,7 @@ struct SgsnAdapter {
+ 	// Return 0 on success or SmCause value on error.
+ 	static RabStatus allocateRabForPdp(uint32_t urnti, int rbid, ByteVector &qos);
+ 	static void startIntegrityProtection(uint32_t urnti, std::string Kcs);
++	static void startIntegrityProtectionWithIK(uint32_t urnti, std::string IKs);
+ #endif
+ };
+ 
+diff --git a/UMTS/IntegrityProtect.cpp b/UMTS/IntegrityProtect.cpp
+index a7b9fa3..f67bdda 100644
+--- a/UMTS/IntegrityProtect.cpp
++++ b/UMTS/IntegrityProtect.cpp
+@@ -396,6 +396,22 @@ void IntegrityProtect::setKcs(std::string kcs)
+ 	setKc(mKc);
+ }
+ 
++void IntegrityProtect::setIK(std::string iks)
++{
++	if (iks.size() != 32) {
++		LOG(ERR) << "Invalid UMTS IK length: " << iks.size()
++		         << " hex characters (expected 32)";
++		return;
++	}
++
++	for (unsigned i = 0; i < 16; i++) {
++		std::string byte = iks.substr(i * 2, 2);
++		mIK[i] = (uint8_t)strtoul(byte.c_str(), NULL, 16);
++	}
++
++	LOG(INFO) << "Using native 128-bit UMTS IK";
++}
++
+ uint32_t IntegrityProtect::runF9(unsigned rbid, bool dir, ByteVector &msg)
+ {
+ 	// (pat) 12-22-2012: The multitech modem is sometimes sending "asn1 encoding violation"
+diff --git a/UMTS/IntegrityProtect.h b/UMTS/IntegrityProtect.h
+index 187e7f5..20cd18b 100644
+--- a/UMTS/IntegrityProtect.h
++++ b/UMTS/IntegrityProtect.h
+@@ -55,6 +55,7 @@ class IntegrityProtect
+ 
+ 	void setKc(uint64_t Kc);
+ 	void setKcs(std::string kcs);
++	void setIK(std::string iks);
+ 	uint32_t runF9(unsigned rbid, bool dir, ByteVector &msg);
+ 	// They call the bottom 4 bits of COUNT-I the RRC SN [sequence number]
+ 	unsigned getDlRrcSn(unsigned rbid) { return 0xf & mDlCounti[rbid]; }
+diff --git a/UMTS/UMTSPhCh.h b/UMTS/UMTSPhCh.h
+index 05c9259..ad63c3c 100644
+--- a/UMTS/UMTSPhCh.h
++++ b/UMTS/UMTSPhCh.h
+@@ -235,7 +235,7 @@ struct ChannelTreeElt
+ 	DCHFEC *mDch;	// The DPDCH, although we could put the other PhChs in here too. (SCCPCH, PCCPCH, etc)
+ 	bool available(bool checkOnlyReserved);
+ 	bool active(void);
+-	ChannelTreeElt() : mReserved(0), mDch(0) {}
++	ChannelTreeElt() : mReserved(0), mAlsoReserved(0), mDch(0) {}
+ };
+ 
+ 
+diff --git a/UMTS/URLC.cpp b/UMTS/URLC.cpp
+index 03ce217..aed4df4 100644
+--- a/UMTS/URLC.cpp
++++ b/UMTS/URLC.cpp
+@@ -150,6 +150,10 @@ static void *sgsnUplinkServiceLoop(void *arg)
+ {
+ 	while (1) {
+ 		RrcUplinkMessage *msg = gSgsnUplinkQueue.read();
++		printf("### SGSN QUEUE RX: RB=%u bytes=%u ###\n",
++		       (unsigned)msg->msgRbid,
++		       (unsigned)msg->msgSdu->size());
++		fflush(stdout);
+ 		msg->msgUep->ueRecvData(*msg->msgSdu,msg->msgRbid);
+ 		delete msg;
+ 	}
+@@ -165,6 +169,12 @@ void l2RlcStart()
+ // Send an sdu out the high side of the rlc, routed based on rbid.
+ void URlcRecv::rlcSendHighSide(URlcUpSdu *sdu)
+ {
++	if (mrbid >= 5 && mrbid < 16) {
++		printf("### UL USERDATA LEFT RLC: RB=%u bytes=%u ###\n",
++		       (unsigned)mrbid,
++		       (unsigned)sdu->size());
++		fflush(stdout);
++	}
+ 	if (this->mHighSideFunc) {
+ 		// This is used for testing.
+ 		this->mHighSideFunc(*sdu,mrbid);
+diff --git a/UMTS/URRC.cpp b/UMTS/URRC.cpp
+index 752fdb2..d90e4fc 100644
+--- a/UMTS/URRC.cpp
++++ b/UMTS/URRC.cpp
+@@ -1573,4 +1573,14 @@ namespace SGSN {
+ 		uep->integrity.setKcs(Kcs);
+ 		UMTS::sendSecurityModeCommand(uep);
+ 	}
++
++	void SgsnAdapter::startIntegrityProtectionWithIK(uint32_t urnti, string IKs) {
++		UMTS::UEInfo *uep = UMTS::gRrc.findUeByUrnti(urnti);
++		if (!uep) {
++			LOG(ERR) << "Cannot start UMTS integrity protection: UE not found";
++			return;
++		}
++		uep->integrity.setIK(IKs);
++		UMTS::sendSecurityModeCommand(uep);
++	}
+ };
+diff --git a/UMTS/URRCTrCh.cpp b/UMTS/URRCTrCh.cpp
+index 77bc994..8a3b0c1 100644
+--- a/UMTS/URRCTrCh.cpp
++++ b/UMTS/URRCTrCh.cpp
+@@ -195,6 +195,14 @@ bool TrChConfig::configDchPS(DCHFEC *dch, TTICodes tticode, unsigned pb, bool us
+ 					<< " using TBsize="<<ulMaxTBSize;
+ 			result = false;
+ 			ulTBSize = ulMaxTBSize;
++
++			/*
++			 * We backed the TB size down to one that fits.
++			 * The old code forgot to restore the TB count,
++			 * leaving ulMaxTBs == 0 and creating an unusable
++			 * uplink DCH transport format.
++			 */
++			ulMaxTBs = 1;
+ 		} else if (ulMaxTBs >= maxTbPerTrCh) {
+ 			LOG(ERR) << "Internal DCH config: with uplink TB size="<<ulTBSize<<" then numTBs="<<ulMaxTBs<<" which exceeds maximum="<<maxTbPerTrCh<<" using max instead";
+ 			ulMaxTBs = maxTbPerTrCh - 1;
+diff --git a/apps/OpenBTS-UMTS.cpp b/apps/OpenBTS-UMTS.cpp
+index 480ae35..fc8d482 100644
+--- a/apps/OpenBTS-UMTS.cpp
++++ b/apps/OpenBTS-UMTS.cpp
+@@ -259,12 +259,23 @@ int main(int argc, char *argv[])
+ 	gNodeB.start(C0radio);
+ 
+ 	struct sockaddr_un cmdSockName;
++	memset(&cmdSockName, 0, sizeof(cmdSockName));
+ 	cmdSockName.sun_family = AF_UNIX;
+-	const char* sockpath = gConfig.getStr("CLI.SocketPath").c_str();
+-	char rmcmd[strlen(sockpath)+5];
+-	sprintf(rmcmd,"rm -f %s",sockpath);
+-	if (system(rmcmd)) {}	// The 'if' shuts up gcc warnings.
+-	strcpy(cmdSockName.sun_path,sockpath);
++
++	const std::string sockpath = gConfig.getStr("CLI.SocketPath");
++
++	if (sockpath.size() >= sizeof(cmdSockName.sun_path)) {
++		LOG(ALERT) << "CLI.SocketPath is too long: " << sockpath;
++		exit(1);
++	}
++
++	// Remove a stale socket directly. No shell command needed.
++	unlink(sockpath.c_str());
++
++	strncpy(cmdSockName.sun_path,
++	        sockpath.c_str(),
++	        sizeof(cmdSockName.sun_path) - 1);
++
+ 	LOG(INFO) "binding CLI datagram socket at " << sockpath;
+ 	if (bind(sock, (struct sockaddr *) &cmdSockName, sizeof(struct sockaddr_un))) {
+ 		perror("binding name to cmd datagram socket");

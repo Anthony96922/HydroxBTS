@@ -1,0 +1,18 @@
+ M SGSNGGSN/GPRSL3Messages.cpp
+ M SGSNGGSN/GPRSL3Messages.h
+ M SGSNGGSN/Sgsn.cpp
+ M SGSNGGSN/Sgsn.h
+ M SGSNGGSN/SgsnExport.h
+ M UMTS/IntegrityProtect.cpp
+ M UMTS/IntegrityProtect.h
+ M UMTS/UMTSPhCh.h
+ M UMTS/URLC.cpp
+ M UMTS/URRC.cpp
+ M UMTS/URRCTrCh.cpp
+ M apps/OpenBTS-UMTS.cpp
+?? TransceiverUHD/transceiver
+?? gsup-auth-test
+?? gsup-auth-test.c
+?? openbts-gsup-auth
+?? openbts-gsup-auth.c
+?? transceiver

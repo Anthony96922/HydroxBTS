@@ -1,0 +1,22 @@
+● osmo-hlr.service - Osmocom Home Location Register (OsmoHLR)
+     Loaded: loaded (/usr/lib/systemd/system/osmo-hlr.service; enabled; preset: enabled)
+     Active: active (running) since Wed 2026-10-07 15:07:01 CEST; 3h 21min ago
+       Docs: https://osmocom.org/projects/osmo-hlr/wiki/OsmoHLR
+    Process: 770337 ExecStartPre=/usr/share/osmocom/osmo-hlr-db-upgrade.sh (code=exited, status=0/SUCCESS)
+   Main PID: 770340 (osmo-hlr)
+      Tasks: 1 (limit: 34913)
+     Memory: 2.9M (peak: 3.8M)
+        CPU: 247ms
+     CGroup: /system.slice/osmo-hlr.service
+             └─770340 /usr/bin/osmo-hlr -c /etc/osmocom/osmo-hlr.cfg -l /var/lib/osmocom/hlr.db
+
+Oct 07 17:41:51 yatai osmo-hlr[770340]: DLINP ERROR 127.0.0.1:40979 connection closed with server (ipa.c:415)
+Oct 07 17:47:48 yatai osmo-hlr[770340]: DLINP ERROR 127.0.0.1:36879 connection closed with server (ipa.c:415)
+Oct 07 17:52:49 yatai osmo-hlr[770340]: DLINP ERROR 127.0.0.1:43157 connection closed with server (ipa.c:415)
+Oct 07 17:58:25 yatai osmo-hlr[770340]: DLINP ERROR 127.0.0.1:46835 connection closed with server (ipa.c:415)
+Oct 07 18:03:27 yatai osmo-hlr[770340]: DLINP ERROR 127.0.0.1:38611 connection closed with server (ipa.c:415)
+Oct 07 18:05:47 yatai osmo-hlr[770340]: DLINP ERROR 127.0.0.1:37269 connection closed with server (ipa.c:415)
+Oct 07 18:09:53 yatai osmo-hlr[770340]: DLINP ERROR 127.0.0.1:43339 connection closed with server (ipa.c:415)
+Oct 07 18:10:28 yatai osmo-hlr[770340]: DLINP ERROR 127.0.0.1:35265 connection closed with server (ipa.c:415)
+Oct 07 18:12:23 yatai osmo-hlr[770340]: DLINP ERROR 127.0.0.1:34719 connection closed with server (ipa.c:415)
+Oct 07 18:18:36 yatai osmo-hlr[770340]: DLINP ERROR 127.0.0.1:42105 connection closed with server (ipa.c:415)

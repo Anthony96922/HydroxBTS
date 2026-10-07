@@ -1,0 +1,2 @@
+origin	https://github.com/PentHertz/OpenBTS-UMTS.git (fetch)
+origin	https://github.com/PentHertz/OpenBTS-UMTS.git (push)

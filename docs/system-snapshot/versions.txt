@@ -1,0 +1,25 @@
+=== DATE ===
+2026-10-07T18:28:10+02:00
+
+=== UNAME ===
+Linux yatai 7.0.0-34-generic #34~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Fri Sep  4 15:38:29 UTC 2 x86_64 x86_64 x86_64 GNU/Linux
+
+=== GCC ===
+gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+Copyright (C) 2023 Free Software Foundation, Inc.
+
+=== G++ ===
+g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+Copyright (C) 2023 Free Software Foundation, Inc.
+
+=== MAKE ===
+GNU Make 4.3
+Built for x86_64-pc-linux-gnu
+
+=== UHD ===
+UHD 4.6.0.0+ds1-5.1ubuntu0.24.04.1
+
+=== OSMOCOM PKG-CONFIG ===
+libosmo-gsup-client: 1.9.4
+libosmocore: 1.14.2
+libosmogsm: 1.14.2

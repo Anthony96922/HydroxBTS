@@ -1,0 +1,32 @@
+# Never publish exact subscriber/authentication databases or host snapshots.
+PRIVATE_DO_NOT_UPLOAD/
+
+# Subscriber / runtime databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Build junk
+*.o
+*.lo
+*.la
+*.a
+*.so
+*.so.*
+.libs/
+.deps/
+autom4te.cache/
+core
+core.*
+*.log
+
+# Editor / OS junk
+*~
+*.swp
+.DS_Store
+
+# Locally built executables
+/source/openbts-gsup-auth
+/source/gsup-auth-test
+/source/transceiver
+/source/TransceiverUHD/transceiver

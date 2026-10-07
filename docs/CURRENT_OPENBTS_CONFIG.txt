@@ -1,0 +1,14 @@
+GGSN.DNS=1.1.1.1 8.8.8.8
+GGSN.Firewall.Enable=0
+GGSN.MS.IP.Base=192.168.99.1
+GGSN.TunName=sgsntun
+GPRS.NMO=2
+GPRS.RAC=100
+UMTS.Best.Effort.BytesPerSec=7500
+UMTS.Identity.LAC=132
+UMTS.Identity.MCC=001
+UMTS.Identity.MNC=01
+UMTS.Radio.Band=850
+UMTS.Radio.C0=4357
+UMTS.Radio.RxGain=35
+UMTS.UseTurboCodes=0
