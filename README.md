@@ -425,7 +425,48 @@ Run OpenBTS-UMTS in another terminal.
 - Fixed RRC Radio Bearer Setup by remapping existing signalling bearers.
 - Fixed stale GMM-to-UE associations after RRC reconnection.
 - Prevented downlink packets from being routed to deleted UE contexts.
-- Successfully tested UMTS packet data with Galaxy A42 and Galaxy J5.
+- Successfully tested ### Optional: Extend UMTS Inactivity Timers
+
+If devices experience problems resuming packet data after being idle, you can optionally increase the network's inactivity timers.
+
+**1. Open the CLI in a separate terminal:**
+
+```bash
+cd ~/OpenBTS-UMTS-OsmoHLR-3G/source
+sudo ./apps/OpenBTS-UMTSCLI
+```
+
+**2. Set the inactivity timers:**
+
+```text
+rawconfig UMTS.Timers.Inactivity.Release 86400
+rawconfig UMTS.Timers.Inactivity.Delete 172800
+```
+
+This changes the following settings:
+
+| Setting | Default | New value |
+|---|---|---|
+| RRC inactivity release | 180 seconds | 24 hours |
+| Idle UE deletion | 300 seconds | 48 hours |
+
+Restart OpenBTS-UMTS to ensure the new settings take effect. No recompilation is required.
+
+**Important:** These values exceed the normal configuration limits, so `rawconfig` is required instead of `config` or `devconfig`.
+
+This is an **experimental workaround, not a permanent fix** for idle-reconnection issues. Phones may still voluntarily release their RRC connections, and longer inactivity timers may increase resource usage and battery consumption.
+
+To restore the original timer values:
+
+```text
+rawconfig UMTS.Timers.Inactivity.Release 180
+rawconfig UMTS.Timers.Inactivity.Delete 300
+```UMTS packet data with Galaxy A42 and Galaxy J5.
+
+
+
+never forget to back up : sudo cp -a /etc/OpenBTS/OpenBTS-UMTS.db /etc/OpenBTS/OpenBTS-UMTS.db.bak
+
 
 ### Experimental project
 
