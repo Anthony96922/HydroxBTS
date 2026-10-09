@@ -396,6 +396,17 @@ After compiling, run from the source directory:
 
 Only create the symlink if `source/transceiver` does not already exist.
 
+### Starting the UHD transceiver
+
+Open a separate terminal and run:
+
+`cd ~/OpenBTS-UMTS-OsmoHLR-3G/source/TransceiverUHD`
+
+`sudo ./transceiver 1`
+
+Keep the transceiver running while using OpenBTS-UMTS.
+Run OpenBTS-UMTS in another terminal.
+
 ### Samsung J5 packet-data fixes
 
 - Fixed RRC Radio Bearer Setup by remapping existing signalling bearers.
