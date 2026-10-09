@@ -1,4 +1,17 @@
 # OpenBTS-UMTS + OsmoHLR 3G
+🚀 Version 1.1 Released!
+
+Major fixes to mobile data functionality and connection stability!
+
+✅ Confirmed working devices: Samsung Galaxy A42 5G, Galaxy J5, and Galaxy S7.
+
+⚠️ Note: Mobile data activation may take longer than 30 seconds. This is normal. Please wait at least 45 seconds for the data indicator to appear before troubleshooting.
+
+
+
+
+
+
 
 «[!WARNING]
 ⚠️ Experimental Software: Known Data Connectivity Issues
