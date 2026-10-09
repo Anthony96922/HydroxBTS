@@ -913,9 +913,10 @@ bool sendRadioBearerSetup(UEInfo *uep, RrcMasterChConfig *masterConfig, PhCh *ph
 	// The new SRBs will be multiplexed using the paradigm of the defaultRBMappingInfo
 	// struct SRB_InformationSetupList *srb_InformationSetupList   /* OPTIONAL */;
 	if (srbstoo) {
-		// 3GPP 25.331 10.3.4.24
-		rbs.srb_InformationSetupList = RN_CALLOC(ASN::SRB_InformationSetupList);
-		toAsnSRB_InformationSetupList(masterConfig,&rbs.srb_InformationSetupList->list);
+		// J5 compatibility experiment: SRB1..3 already exist in CELL_FACH.
+		// Remap those bearers to the new DCH instead of setting them up again.
+		// Keep the data RAB/RB setup and physical/transport config unchanged.
+		rbs.rb_InformationAffectedList = toAsnRB_InformationAffectedList(masterConfig);
 	}
 
 	// The RAB is where the new RBID for the data channel needs to go.

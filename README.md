@@ -383,3 +383,34 @@ The deeper patch/history notes are in:
 SETUP_GUIDE.md
 docs/
 ```
+
+## UMTS compatibility and build notes
+
+### Transceiver symlink
+
+After compiling, run from the source directory:
+
+`cd source`
+
+`ln -s TransceiverUHD/transceiver transceiver`
+
+Only create the symlink if `source/transceiver` does not already exist.
+
+### Samsung J5 packet-data fixes
+
+- Fixed RRC Radio Bearer Setup by remapping existing signalling bearers.
+- Fixed stale GMM-to-UE associations after RRC reconnection.
+- Prevented downlink packets from being routed to deleted UE contexts.
+- Successfully tested UMTS packet data with Galaxy A42 and Galaxy J5.
+
+### Experimental project
+
+This is an experimental proof of concept demonstrating Milenage AKA
+and real UMTS packet data with OpenBTS-UMTS.
+
+It is not plug-and-play. Expect debugging and compatibility issues.
+
+For major problems, visit the DIY Discord:
+https://discord.gg/CqW9XKst9E
+
+Tag the project maintainer for assistance.

@@ -2031,7 +2031,19 @@ GmmInfo *findGmmByImsi(ByteVector &imsi, SgsnInfo *si)
 		if (gmm->mImsi == imsi) { result = gmm; }
 	}
 	if (result) {
-		if (si) si->setGmm(result);
+		if (si) {
+			si->setGmm(result);
+#if RN_UMTS
+			// Rebind the retained GMM context to the current UE.
+			// The previous RRC connection may have been deleted.
+			SgsnInfo *oldSi = result->msi;
+			result->msi = si;
+			printf("### UMTS_GMM_REBIND: old=%p new=%p handle=%08x ###\n",
+			       (void*)oldSi, (void*)si,
+			       (unsigned)si->mMsHandle);
+			fflush(stdout);
+#endif
+		}
 		return result;
 	}
 	if (!si) { return NULL; }
