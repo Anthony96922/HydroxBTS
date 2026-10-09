@@ -224,7 +224,7 @@ sudo systemctl start osmo-hlr
 
 ### Terminal 2: transceiver
 
-From `source/`:
+From `TransceiverUHD/`:
 
 ```bash
 sudo ./transceiver 1
