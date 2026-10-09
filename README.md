@@ -1,5 +1,17 @@
 # OpenBTS-UMTS + OsmoHLR 3G
 
+«[!WARNING]
+⚠️ Experimental Software: Known Data Connectivity Issues
+
+This OpenBTS-UMTS stack is still experimental and under active development. While UMTS registration, authentication, and packet data are functional, some users may experience issues with mobile data connectivity, including successful network attachment without working internet access.
+
+If you encounter any issues, please report them through the "GitHub Issues" (https://github.com/kingyatrib/OpenBTS-UMTS-OsmoHLR-3G/issues) page. Include your device model, relevant logs, and a description of the problem whenever possible.
+
+Future updates and bug fixes are planned, including improvements to packet data reliability, radio functionality, and overall stability.
+
+Thank you for testing and helping improve this project!»
+
+
 **Hyper-early / experimental. Lab use only.**
 
 Patched OpenBTS-UMTS with:
